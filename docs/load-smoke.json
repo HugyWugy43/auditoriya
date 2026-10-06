@@ -1,0 +1,8 @@
+{
+  "requests": 100,
+  "concurrency": 10,
+  "errors": 0,
+  "totalMs": 910,
+  "p95Ms": 130,
+  "note": "Local smoke test, not production capacity certification"
+}

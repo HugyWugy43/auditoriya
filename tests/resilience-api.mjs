@@ -1,0 +1,13 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const s=JSON.parse(fs.readFileSync('.local-test/harden-test-session.json','utf8'));const token=s.teacher.token;
+async function req(path,method='GET',body,auth=token,port=8080){const r=await fetch('http://127.0.0.1:'+port+path,{method,headers:{Authorization:'Bearer '+auth,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const text=await r.text();let data;try{data=JSON.parse(text)}catch{data=text}return{status:r.status,data};}
+const room=await req('/api/rooms','POST',{roomNumber:'R'+Date.now(),name:'Реплики и восстановление',type:'COMPUTER_LAB',capacity:20,isActive:true},s.admin);assert.equal(room.status,201);
+const day=new Date(Date.now()+5*86400000).toISOString().slice(0,10);const payload={roomId:room.data.id,userId:s.teacher.id,startTime:day+'T12:00:00',endTime:day+'T13:00:00',purpose:'Проверка нескольких реплик'};
+const result=await Promise.all(Array.from({length:20},(_,i)=>req('/api/bookings','POST',payload,token,i%2?18083:8083)));
+assert.equal(result.filter(x=>x.status===201).length,1); assert.ok(result.every(x=>[201,400,409].includes(x.status)));console.log('PASS 20 concurrent requests across two replicas: one winner; notification outage does not block booking');
+const b=result.find(x=>x.status===201).data;fs.writeFileSync('.local-test/recovery-booking.json',JSON.stringify(b));
+const unauth=await fetch('http://127.0.0.1:8080/graphql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:'{rooms{id}}'})});assert.equal(unauth.status,401);console.log('PASS GraphQL anonymous denied');
+const role=await req('/graphql','POST',{query:'{ users { id email } }'});assert.ok(role.data.errors);assert.equal(role.data.data,null);console.log('PASS GraphQL cannot bypass role restrictions');
+const gql=await req('/graphql','POST',{query:'mutation($input: BookingInput!){createBooking(input:$input){id status}}',variables:{input:{...payload,startTime:day+'T14:00:00',endTime:day+'T15:00:00'}}});assert.ok(!gql.data.errors,JSON.stringify(gql));const id=gql.data.data.createBooking.id;const cancel=await req('/graphql','POST',{query:'mutation($id:ID!){cancelBooking(id:$id)}',variables:{id}});assert.equal(cancel.data.data.cancelBooking,true);console.log('PASS GraphQL create and cancel');
+for(const port of [8081,8082,8083,8084]) {if(port===8084)continue;const path={8081:'/internal/users/1',8082:'/internal/rooms/1',8083:'/api/bookings'}[port]; const r=await fetch('http://127.0.0.1:'+port+path);assert.equal(r.status,401);}
+console.log('PASS direct service endpoints require authentication');

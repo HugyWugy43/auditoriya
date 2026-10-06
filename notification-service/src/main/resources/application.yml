@@ -1,0 +1,51 @@
+server:
+  port: ${SERVER_PORT:8084}
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  error:
+    include-message: never
+spring:
+  application:
+    name: notification-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/audit_notifications}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: 8
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Europe/Moscow
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+security:
+  internal-token: ${INTERNAL_SERVICE_TOKEN}
+services:
+  user:
+    url: ${USER_SERVICE_URL:http://localhost:8081}
+  room:
+    url: ${ROOM_SERVICE_URL:http://localhost:8082}
+  notification:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+logging:
+  level:
+    com.audit: INFO

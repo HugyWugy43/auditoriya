@@ -1,0 +1,99 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env first}
+      TZ: Europe/Moscow
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD:?Required}
+      ROOM_DB_PASSWORD: ${ROOM_DB_PASSWORD:?Required}
+      BOOKING_DB_PASSWORD: ${BOOKING_DB_PASSWORD:?Required}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?Required}
+    volumes:
+      - postgres_isolated:/var/lib/postgresql/data
+      - ./infra/postgres/01-databases.sh:/docker-entrypoint-initdb.d/01-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  user-service:
+    build: ./user-service
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/audit_users
+      SPRING_DATASOURCE_USERNAME: audit_users
+      SPRING_DATASOURCE_PASSWORD: ${USER_DB_PASSWORD:?Required}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Europe/Moscow
+      USER_SERVICE_URL: http://user-service:8081
+      ROOM_SERVICE_URL: http://room-service:8082
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+      JWT_SECRET: ${JWT_SECRET:?Required}
+      BOOTSTRAP_ADMIN_ENABLED: ${BOOTSTRAP_ADMIN_ENABLED:-false}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@localhost.invalid}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+  room-service:
+    build: ./room-service
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/audit_rooms
+      SPRING_DATASOURCE_USERNAME: audit_rooms
+      SPRING_DATASOURCE_PASSWORD: ${ROOM_DB_PASSWORD:?Required}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Europe/Moscow
+      USER_SERVICE_URL: http://user-service:8081
+      ROOM_SERVICE_URL: http://room-service:8082
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+    depends_on:
+      postgres:
+        condition: service_healthy
+  booking-service:
+    build: ./booking-service
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/audit_bookings
+      SPRING_DATASOURCE_USERNAME: audit_bookings
+      SPRING_DATASOURCE_PASSWORD: ${BOOKING_DB_PASSWORD:?Required}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Europe/Moscow
+      USER_SERVICE_URL: http://user-service:8081
+      ROOM_SERVICE_URL: http://room-service:8082
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+    depends_on:
+      postgres:
+        condition: service_healthy
+  notification-service:
+    build: ./notification-service
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/audit_notifications
+      SPRING_DATASOURCE_USERNAME: audit_notifications
+      SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?Required}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Europe/Moscow
+      USER_SERVICE_URL: http://user-service:8081
+      ROOM_SERVICE_URL: http://room-service:8082
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api-gateway:
+    build: ./api-gateway
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      USER_SERVICE_URL: http://user-service:8081
+      ROOM_SERVICE_URL: http://room-service:8082
+      BOOKING_SERVICE_URL: http://booking-service:8083
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+  client:
+    build: ./client
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - api-gateway
+volumes:
+  postgres_isolated:

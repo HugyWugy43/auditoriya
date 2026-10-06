@@ -1,0 +1,8 @@
+type User { id: ID!, username: String!, email: String!, firstName: String!, lastName: String!, role: String!, active: Boolean! }
+type Room { id: ID!, roomNumber: String!, name: String!, type: String!, capacity: Int!, description: String, isActive: Boolean!, archived: Boolean! }
+type Booking { id: ID!, userId: ID, roomId: ID!, startTime: String!, endTime: String!, purpose: String, status: String! }
+type BookingPage { content: [Booking!]!, number: Int!, size: Int!, totalElements: Float!, totalPages: Int!, last: Boolean! }
+input BookingInput { userId: ID!, roomId: ID!, startTime: String!, endTime: String!, purpose: String }
+input RoomInput { roomNumber: String!, name: String!, type: String!, capacity: Int!, description: String, isActive: Boolean = true }
+type Query { me: User!, users: [User!]!, rooms: [Room!]!, room(id: ID!): Room, booking(id: ID!): Booking, bookings(page: Int = 0, size: Int = 25, roomId: ID, userId: ID): BookingPage! }
+type Mutation { createBooking(input: BookingInput!): Booking!, createRoom(input: RoomInput!): Room!, cancelBooking(id: ID!): Boolean! }

@@ -1,0 +1,155 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_REGISTRY = 'your-registry.com'
+        KUBERNETES_NAMESPACE = 'audit-system'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    if (env.GIT_URL) {
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: [[name: '*/main']],
+                            userRemoteConfigs: [[url: env.GIT_URL]],
+                            extensions: [[$class: 'CleanBeforeCheckout']]
+                        ])
+                    } else {
+                        echo 'Используется код из workspace. Для получения из Git настройте GIT_URL или используйте "Pipeline script from SCM"'
+                    }
+                }
+            }
+        }
+        
+        stage('Build Backend Services') {
+            parallel {
+                stage('Build User Service') {
+                    steps {
+                        dir('user-service') {
+                            sh 'mvn clean package -DskipTests'
+                        }
+                    }
+                }
+                stage('Build Room Service') {
+                    steps {
+                        dir('room-service') {
+                            sh 'mvn clean package -DskipTests'
+                        }
+                    }
+                }
+                stage('Build Booking Service') {
+                    steps {
+                        dir('booking-service') {
+                            sh 'mvn clean package -DskipTests'
+                        }
+                    }
+                }
+                stage('Build Notification Service') {
+                    steps {
+                        dir('notification-service') {
+                            sh 'mvn clean package -DskipTests'
+                        }
+                    }
+                }
+                stage('Build API Gateway') {
+                    steps {
+                        dir('api-gateway') {
+                            sh 'mvn clean package -DskipTests'
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Build Frontend') {
+            steps {
+                dir('client') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
+            }
+        }
+        
+        stage('Docker Build') {
+            steps {
+                script {
+                    def services = [
+                        'user-service',
+                        'room-service',
+                        'booking-service',
+                        'notification-service',
+                        'api-gateway',
+                        'client'
+                    ]
+                    
+                    services.each { service ->
+                        sh """
+                            docker build -t ${DOCKER_REGISTRY}/${service}:${env.BUILD_NUMBER} ./${service}
+                            docker build -t ${DOCKER_REGISTRY}/${service}:latest ./${service}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Docker Push') {
+            steps {
+                script {
+                    def services = [
+                        'user-service',
+                        'room-service',
+                        'booking-service',
+                        'notification-service',
+                        'api-gateway',
+                        'client'
+                    ]
+                    
+                    services.each { service ->
+                        sh """
+                            docker push ${DOCKER_REGISTRY}/${service}:${env.BUILD_NUMBER}
+                            docker push ${DOCKER_REGISTRY}/${service}:latest
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh """
+                    kubectl set image deployment/user-service user-service=${DOCKER_REGISTRY}/user-service:${env.BUILD_NUMBER} -n ${KUBERNETES_NAMESPACE}
+                    kubectl set image deployment/room-service room-service=${DOCKER_REGISTRY}/room-service:${env.BUILD_NUMBER} -n ${KUBERNETES_NAMESPACE}
+                    kubectl set image deployment/booking-service booking-service=${DOCKER_REGISTRY}/booking-service:${env.BUILD_NUMBER} -n ${KUBERNETES_NAMESPACE}
+                    kubectl set image deployment/notification-service notification-service=${DOCKER_REGISTRY}/notification-service:${env.BUILD_NUMBER} -n ${KUBERNETES_NAMESPACE}
+                    kubectl set image deployment/api-gateway api-gateway=${DOCKER_REGISTRY}/api-gateway:${env.BUILD_NUMBER} -n ${KUBERNETES_NAMESPACE}
+                    kubectl set image deployment/client client=${DOCKER_REGISTRY}/client:${env.BUILD_NUMBER} -n ${KUBERNETES_NAMESPACE}
+                """
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                script {
+                    sleep(time: 30, unit: 'SECONDS')
+                    sh """
+                        kubectl get pods -n ${KUBERNETES_NAMESPACE}
+                        curl -f http://api-gateway.${KUBERNETES_NAMESPACE}.svc.cluster.local:8080/api/users || exit 1
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
+

@@ -1,0 +1,13 @@
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { api } from '../services/api'
+export default function Notifications() {
+ const [data,setData] = useState({content:[],unread:0,totalPages:0}), [page,setPage] = useState(0), [error,setError] = useState(''), [loading,setLoading] = useState(true)
+ const [rooms,setRooms] = useState([])
+ useEffect(() => { api.getRooms().then(r => setRooms(r.data)).catch(() => {}) },[])
+ const message = n => n.message.replace(/Аудитория #(\d+)/,(_,id) => 'Аудитория '+(rooms.find(r=>String(r.id)===id)?.roomNumber || '#'+id)).replace(/(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/g,(_,y,m,d,t)=>d+'.'+m+'.'+y+' '+t)
+ const refresh = async () => { try { const r=await api.getNotifications(page); setData(r.data); setError('') } catch { setError('Не удалось загрузить уведомления. Повторите попытку.') } finally { setLoading(false) } }
+ useEffect(() => { setLoading(true); refresh(); const timer=setInterval(refresh,30000); return () => clearInterval(timer) },[page])
+ const read = async id => { try { await api.readNotification(id); window.dispatchEvent(new Event('notifications:read')); await refresh() } catch { setError('Не удалось отметить уведомление.') } }
+ return <><div className="page-heading"><div><span className="eyebrow">ВСЕГДА В КУРСЕ</span><h1>Уведомления<span className="heading-dot">.</span></h1><p>Ваши бронирования и изменения в избранных аудиториях.</p></div><span className="status-pill busy">Непрочитано: {data.unread}</span></div><section className="panel">{error && <div className="error" role="alert">{error}<button onClick={refresh} className="text-button">Повторить</button></div>}{loading ? <div className="empty-state">Загружаем…</div> : data.content.map(n => <article className={'notification-item '+(!n.isRead?'unread':'')} key={n.id}><div><strong>{message(n)}</strong><p className="muted">{n.createdAt.replace('T',' ').slice(0,16)}</p><Link to={`/bookings?roomId=${n.roomId}`} className="text-link">К бронированиям</Link></div>{!n.isRead && <button className="btn btn-secondary" onClick={() => read(n.id)}>Прочитано</button>}</article>)}{!loading && !data.content.length && <div className="empty-state"><h3>Пока всё спокойно</h3><p>Добавьте аудиторию в избранное, чтобы отслеживать изменения расписания.</p><Link to="/rooms" className="btn btn-primary">Выбрать аудитории</Link></div>}<div className="pagination"><button className="btn btn-secondary" disabled={!page || loading} onClick={() => setPage(page-1)}>Назад</button><span>Страница {page+1}</span><button className="btn btn-secondary" disabled={page+1>=data.totalPages || loading} onClick={() => setPage(page+1)}>Далее</button></div></section></>
+}

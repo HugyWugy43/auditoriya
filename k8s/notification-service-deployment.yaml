@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: notification-service}
+  template:
+    metadata:
+      labels: {app: notification-service}
+    spec:
+      containers:
+      - name: notification-service
+        image: audit/notification-service:1.0.0
+        ports:
+        - containerPort: 8084
+        env:
+        - name: SERVER_ADDRESS
+          value: "0.0.0.0"
+        - name: JAVA_TOOL_OPTIONS
+          value: "-Duser.timezone=Europe/Moscow"
+        - name: USER_SERVICE_URL
+          value: "http://user-service:8081"
+        - name: ROOM_SERVICE_URL
+          value: "http://room-service:8082"
+        - name: BOOKING_SERVICE_URL
+          value: "http://booking-service:8083"
+        - name: NOTIFICATION_SERVICE_URL
+          value: "http://notification-service:8084"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres:5432/audit_notifications"
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "audit_notifications"
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: audit-secrets
+              key: NOTIFICATION_DB_PASSWORD
+        - name: INTERNAL_SERVICE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: audit-secrets
+              key: INTERNAL_SERVICE_TOKEN
+        readinessProbe:
+          httpGet: {path: /actuator/health, port: 8084}
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        resources:
+          requests: {memory: 256Mi, cpu: 100m}
+          limits: {memory: 768Mi, cpu: "1"}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+spec:
+  selector: {app: notification-service}
+  ports:
+  - port: 8084
+    targetPort: 8084
+  type: ClusterIP
