@@ -1,4 +1,4 @@
-import React from 'react'
+import type { SVGProps } from 'react'
 const paths = {
  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4',
  grid: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
@@ -14,6 +14,9 @@ const paths = {
  lab: 'M9 3h6 M10 3v6L4 19a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L14 9V3 M8 14h8',
  menu: 'M4 6h16 M4 12h16 M4 18h16', back: 'M19 12H5 M11 6l-6 6 6 6',
 }
-export default function Icon({ name = 'grid', size = 20, ...props }) {
+export type IconName = keyof typeof paths
+type IconProps = SVGProps<SVGSVGElement> & { name?: IconName; size?: number }
+
+export default function Icon({ name = 'grid', size = 20, ...props }: IconProps) {
  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d={paths[name] || paths.grid}/></svg>
 }

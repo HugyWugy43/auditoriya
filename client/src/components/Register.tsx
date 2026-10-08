@@ -1,9 +1,39 @@
-import React, { useState, useMemo } from 'react'
-import { api } from '../services/api'
+import { useState, useMemo, type ChangeEvent, type FormEvent } from 'react'
+import { api, apiErrorMessage } from '../services/api'
 import './Register.css'
+import type { AuthResponse } from '../types'
 
-function Register({ onRegister, onBackToLogin }) {
-  const [formData, setFormData] = useState({
+interface RegisterProps {
+  onRegister: (user: AuthResponse) => void
+  onBackToLogin: () => void
+}
+
+interface RegisterForm {
+  username: string
+  email: string
+  password: string
+  confirmPassword: string
+  firstName: string
+  lastName: string
+}
+
+interface PasswordChecks {
+  length: boolean
+  lowercase: boolean
+  uppercase: boolean
+  numbers: boolean
+  special: boolean
+}
+
+interface PasswordStrength {
+  strength: number
+  label: string
+  color: string
+  checks: PasswordChecks
+}
+
+function Register({ onRegister, onBackToLogin }: RegisterProps) {
+  const [formData, setFormData] = useState<RegisterForm>({
     username: '',
     email: '',
     password: '',
@@ -11,15 +41,13 @@ function Register({ onRegister, onBackToLogin }) {
     firstName: '',
     lastName: ''
   })
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   // Проверка надежности пароля
-  const passwordStrength = useMemo(() => {
+  const passwordStrength = useMemo<PasswordStrength>(() => {
     const password = formData.password
-    if (!password) return { strength: 0, label: '', color: '', checks: {} }
-
     const checks = {
       length: password.length >= 8,
       lowercase: /[a-z]/.test(password),
@@ -27,6 +55,7 @@ function Register({ onRegister, onBackToLogin }) {
       numbers: /[0-9]/.test(password),
       special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
     }
+    if (!password) return { strength: 0, label: '', color: '', checks }
 
     const strength = Object.values(checks).filter(Boolean).length
 
@@ -39,7 +68,7 @@ function Register({ onRegister, onBackToLogin }) {
     }
   }, [formData.password])
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -47,7 +76,7 @@ function Register({ onRegister, onBackToLogin }) {
     setError(null)
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
 
@@ -79,8 +108,7 @@ function Register({ onRegister, onBackToLogin }) {
       const response = await api.register(registerData)
       onRegister(response.data)
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Ошибка регистрации'
-      setError(errorMsg)
+      setError(apiErrorMessage(err, 'Ошибка регистрации'))
     } finally {
       setLoading(false)
     }

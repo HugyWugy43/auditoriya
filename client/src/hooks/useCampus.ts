@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../services/api'
-import { localDate } from '../utils/booking.mjs'
+import { localDate } from '../utils/booking'
+import type { Booking, Room } from '../types'
 export default function useCampus(day = localDate(), endDay = day) {
- const [data, setData] = useState({ rooms: [], bookings: [] })
- const [loading, setLoading] = useState(true), [error, setError] = useState(''), [updated, setUpdated] = useState(null), [refreshing, setRefreshing] = useState(false)
+ const [data, setData] = useState<{ rooms: Room[]; bookings: Booking[] }>({ rooms: [], bookings: [] })
+ const [loading, setLoading] = useState(true), [error, setError] = useState(''), [updated, setUpdated] = useState<Date | null>(null), [refreshing, setRefreshing] = useState(false)
  const request = useRef(0)
  const refresh = useCallback(async () => {
   const id = ++request.current; setRefreshing(true)
-  const next = d => { const date = new Date(d + 'T12:00:00Z'); date.setUTCDate(date.getUTCDate() + 1); return date.toISOString().slice(0,10) }
+  const next = (d: string) => { const date = new Date(d + 'T12:00:00Z'); date.setUTCDate(date.getUTCDate() + 1); return date.toISOString().slice(0,10) }
   try {
    const windows = [...new Set([localDate(),day])]
    const [rooms, ...pages] = await Promise.all([api.getRooms(), ...windows.map(d => api.getBookings({from:d+'T00:00:00',to:next(d === day ? endDay : d)+'T00:00:00'}))])

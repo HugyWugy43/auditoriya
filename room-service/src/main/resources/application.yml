@@ -27,6 +27,9 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+demo:
+  rooms:
+    enabled: ${DEMO_ROOMS_ENABLED:false}
 security:
   internal-token: ${INTERNAL_SERVICE_TOKEN}
 services:

@@ -1,15 +1,25 @@
-import React, { useState, useEffect } from 'react'
-import { api } from '../services/api'
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react'
+import { api, apiErrorMessage } from '../services/api'
 import Dialog from './Dialog'
+import type { Room, RoomInput, RoomType } from '../types'
+
+interface RoomFormData {
+  roomNumber: string
+  name: string
+  type: RoomType
+  capacity: string
+  description: string
+  isActive: boolean
+}
 
 function ManageRooms() {
-  const [rooms, setRooms] = useState([])
+  const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [editingRoom, setEditingRoom] = useState(null)
-  const [formData, setFormData] = useState({
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null)
+  const [formData, setFormData] = useState<RoomFormData>({
     roomNumber: '',
     name: '',
     type: 'LECTURE_HALL',
@@ -36,8 +46,10 @@ function ManageRooms() {
     }
   }
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.currentTarget
+    const checked = e.currentTarget instanceof HTMLInputElement ? e.currentTarget.checked : false
+    const type = e.currentTarget.type
     setFormData({
       ...formData,
       [name]: type === 'checkbox' ? checked : value
@@ -57,7 +69,7 @@ function ManageRooms() {
     setShowCreateModal(true)
   }
 
-  const handleEdit = (room) => {
+  const handleEdit = (room: Room) => {
     setFormData({
       roomNumber: room.roomNumber,
       name: room.name,
@@ -70,15 +82,15 @@ function ManageRooms() {
     setShowCreateModal(true)
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     setSuccess(null)
 
     try {
-      const roomData = {
+      const roomData: RoomInput = {
         ...formData,
-        capacity: parseInt(formData.capacity)
+        capacity: Number.parseInt(formData.capacity, 10)
       }
 
       if (editingRoom) {
@@ -94,12 +106,12 @@ function ManageRooms() {
       loadRooms()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError('Ошибка: ' + (err.response?.data?.message || err.message))
+      setError('Ошибка: ' + apiErrorMessage(err, 'Не удалось сохранить аудиторию.'))
       console.error(err)
     }
   }
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm('Перенести аудиторию в архив? История бронирований сохранится.')) {
       return
     }
@@ -110,13 +122,13 @@ function ManageRooms() {
       loadRooms()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError('Ошибка архивирования: ' + (err.response?.data?.message || err.message))
+      setError('Ошибка архивирования: ' + apiErrorMessage(err, 'Не удалось архивировать аудиторию.'))
       console.error(err)
     }
   }
 
-  const getTypeText = (type) => {
-    const types = {
+  const getTypeText = (type: RoomType) => {
+    const types: Record<RoomType, string> = {
       LECTURE_HALL: 'Лекционная',
       LABORATORY: 'Лаборатория',
       SEMINAR_ROOM: 'Семинарская', STUDY_ROOM: 'Учебная комната',
@@ -240,7 +252,7 @@ function ManageRooms() {
                   id="manage-description" name="description" maxLength={1000}
                   value={formData.description}
                   onChange={handleChange}
-                  rows="3"
+                  rows={3}
                 />
               </div>
               <div className="form-group">

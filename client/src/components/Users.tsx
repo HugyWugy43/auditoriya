@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react'
-import { api } from '../services/api'
+import { useState, useEffect } from 'react'
+import { api, apiErrorMessage } from '../services/api'
+import type { User, UserRole } from '../types'
+
+interface UserFormData { firstName: string; lastName: string; email: string }
 
 function Users() {
-  const [users, setUsers] = useState([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
-  const [editingRole, setEditingRole] = useState(null)
-  const [editingUser, setEditingUser] = useState(null)
-  const [newRole, setNewRole] = useState('')
-  const [editFormData, setEditFormData] = useState({
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [editingRole, setEditingRole] = useState<number | null>(null)
+  const [editingUser, setEditingUser] = useState<number | null>(null)
+  const [newRole, setNewRole] = useState<UserRole | ''>('')
+  const [editFormData, setEditFormData] = useState<UserFormData>({
     firstName: '',
     lastName: '',
     email: ''
@@ -33,7 +36,7 @@ function Users() {
     }
   }
 
-  const handleRoleChange = async (userId, newRoleValue) => {
+  const handleRoleChange = async (userId: number, newRoleValue: UserRole) => {
     try {
       const user = users.find(u => u.id === userId)
       if (!user) return
@@ -46,12 +49,12 @@ function Users() {
       loadUsers()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError('Ошибка изменения роли: ' + (err.response?.data?.message || err.message))
+      setError('Ошибка изменения роли: ' + apiErrorMessage(err, 'Не удалось изменить роль.'))
       console.error(err)
     }
   }
 
-  const startEditUser = (user) => {
+  const startEditUser = (user: User) => {
     setEditingUser(user.id)
     setEditFormData({
       firstName: user.firstName,
@@ -69,7 +72,7 @@ function Users() {
     })
   }
 
-  const handleUserUpdate = async (userId) => {
+  const handleUserUpdate = async (userId: number) => {
     try {
       const user = users.find(u => u.id === userId)
       if (!user) return
@@ -91,12 +94,12 @@ function Users() {
       loadUsers()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError('Ошибка обновления данных: ' + (err.response?.data?.message || err.message))
+      setError('Ошибка обновления данных: ' + apiErrorMessage(err, 'Не удалось обновить данные.'))
       console.error(err)
     }
   }
 
-  const startEditRole = (user) => {
+  const startEditRole = (user: User) => {
     setEditingRole(user.id)
     setNewRole(user.role)
   }
@@ -106,7 +109,7 @@ function Users() {
     setNewRole('')
   }
 
-  const getRoleBadgeClass = (role) => {
+  const getRoleBadgeClass = (role: UserRole) => {
     switch (role) {
       case 'ADMIN':
         return 'badge-danger'
@@ -184,7 +187,7 @@ function Users() {
                   {editingRole === user.id ? (
                     <select
                       value={newRole}
-                      onChange={(e) => setNewRole(e.target.value)}
+                      onChange={(e) => setNewRole(e.target.value as UserRole)}
                       style={{ padding: '4px 8px', borderRadius: '4px' }}
                     >
                       <option value="STUDENT">STUDENT</option>
@@ -222,7 +225,7 @@ function Users() {
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
                           className="btn btn-success"
-                          onClick={() => handleRoleChange(user.id, newRole)}
+                          onClick={() => { if (newRole) handleRoleChange(user.id, newRole) }}
                           style={{ padding: '4px 12px', fontSize: '12px' }}
                         >
                           Сохранить

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { roomState, overlaps, dayBookings, effectiveStatus, localDate } from '../src/utils/booking.mjs'
+import { roomState, overlaps, dayBookings, effectiveStatus, localDate } from '../src/utils/booking.ts'
 const room = { id: 1, isActive: true }
 const booking = { roomId: 1, status: 'CONFIRMED', startTime: '2026-10-05T10:00:00', endTime: '2026-10-05T11:00:00' }
 test('future booking does not occupy a room now', () => { const state = roomState(room,[booking],new Date('2026-10-05T09:00:00+03:00')); assert.equal(state.key,'free'); assert.equal(state.next,booking) })

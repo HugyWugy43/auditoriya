@@ -4,7 +4,7 @@
 
 - Java 17+
 - Maven 3.8+
-- Node.js 18+
+- Node.js 22.12+
 - Docker & Docker Compose
 - Kubernetes (опционально)
 - PostgreSQL 14+ (или использовать Docker образ)

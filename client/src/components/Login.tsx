@@ -1,15 +1,21 @@
-import React, { useState } from 'react'
-import { api } from '../services/api'
+import { useState, type FormEvent } from 'react'
+import { api, apiErrorMessage } from '../services/api'
 import './Login.css'
 import Icon from './Icon'
+import type { AuthResponse } from '../types'
 
-function Login({ onLogin, onShowRegister }) {
+interface LoginProps {
+  onLogin: (user: AuthResponse) => void
+  onShowRegister: () => void
+}
+
+function Login({ onLogin, onShowRegister }: LoginProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
@@ -18,8 +24,7 @@ function Login({ onLogin, onShowRegister }) {
       const response = await api.login(username, password)
       onLogin(response.data)
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Ошибка входа'
-      setError(errorMsg)
+      setError(apiErrorMessage(err, 'Ошибка входа'))
     } finally {
       setLoading(false)
     }

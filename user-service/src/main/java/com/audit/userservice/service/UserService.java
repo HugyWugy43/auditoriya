@@ -1,5 +1,6 @@
 package com.audit.userservice.service;
 
+import com.audit.userservice.dto.ProfileUpdateRequest;
 import com.audit.userservice.model.User;
 import com.audit.userservice.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,20 @@ public class UserService {
     
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);
+    }
+
+    public Optional<User> updateOwnProfile(Long userId, ProfileUpdateRequest profile) {
+        return userRepository.findById(userId).map(user -> {
+            String email = profile.email().trim();
+            if (!user.getEmail().equalsIgnoreCase(email)
+                    && userRepository.existsByEmailIgnoreCase(email)) {
+                throw new IllegalArgumentException("Пользователь с таким email уже существует");
+            }
+            user.setFirstName(profile.firstName().trim());
+            user.setLastName(profile.lastName().trim());
+            user.setEmail(email);
+            return userRepository.save(user);
+        });
     }
     
     public User createUser(User user) {
